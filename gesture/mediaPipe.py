@@ -1,5 +1,6 @@
 import cv2
 import mediapipe as mp
+from unitizing import detect_movement_unit_end
 
 # Create a VideoCapture object
 cap = cv2.VideoCapture(0)
@@ -15,6 +16,9 @@ mp_drawing = mp.solutions.drawing_utils
 if not cap.isOpened(): 
     print("Unable to read camera feed")
 
+# Initialize list to store the last two frames' landmarks
+last_two_frames = []
+
 while True:
     # Capture frame-by-frame
     ret, frame = cap.read()
@@ -27,6 +31,18 @@ while True:
         result = pose.process(rgb_image)
         if result.pose_landmarks:
             mp_drawing.draw_landmarks(frame, result.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+
+            # Add the landmarks of the current frame to the list
+            landmarks = [landmark for landmark in result.pose_landmarks.landmark]
+            last_two_frames.append(landmarks)
+
+            # If we have more than 2 frames, remove the oldest one
+            if len(last_two_frames) > 2:
+                last_two_frames.pop(0)
+
+            # If we have 2 frames, call the detect_movement_change function
+            if len(last_two_frames) == 2:
+                detect_movement_unit_end(last_two_frames)
 
         # Display the resulting frame
         cv2.imshow('Webcam Live Video', frame)
