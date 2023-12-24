@@ -1,7 +1,13 @@
 import cv2
 import mediapipe as mp
 
+# Global variable to control the video loop
+video_running = True
+window_name = 'Little Dance Copiers'
+
 def run():
+    global video_running
+    video_running = True
     # Create a VideoCapture object
     cap = cv2.VideoCapture(0)
 
@@ -17,7 +23,7 @@ def run():
         print("Unable to read camera feed")
 
 
-    while True:
+    while video_running:
         # Capture frame-by-frame
         ret, frame = cap.read()
 
@@ -31,7 +37,7 @@ def run():
                 mp_drawing.draw_landmarks(frame, result.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
             # Display the resulting frame
-            cv2.imshow('Little Dance Copiers', frame)
+            cv2.imshow(window_name, frame)
 
             # Break the loop on 'q' key press
             if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -43,4 +49,8 @@ def run():
     cap.release()
 
     # Closes all the frames
-    cv2.destroyAllWindows()
+    cv2.destroyWindow(window_name)
+
+def stop():
+    global video_running
+    video_running = False
