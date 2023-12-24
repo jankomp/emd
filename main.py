@@ -1,19 +1,45 @@
-import tkinter as tk
+import cv2
+import mediapipe as mp
 
-def on_button_click():
-    label.config(text="Button Clicked!")
+# Create a VideoCapture object
+cap = cv2.VideoCapture(0)
 
-# Create the main window
-window = tk.Tk()
-window.title("Simple GUI")
+# Initialize MediaPipe Pose
+mp_pose = mp.solutions.pose
+pose = mp_pose.Pose()
 
-# Create a label
-label = tk.Label(window, text="Hello, GUI!")
-label.pack(padx=10, pady=10)
+# Initialize drawing utility
+mp_drawing = mp.solutions.drawing_utils
 
-# Create a button
-button = tk.Button(window, text="Click Me", command=on_button_click)
-button.pack(pady=10)
+# Check if camera opened successfully
+if not cap.isOpened(): 
+    print("Unable to read camera feed")
 
-# Start the main event loop
-window.mainloop()
+
+while True:
+    # Capture frame-by-frame
+    ret, frame = cap.read()
+
+    if ret:
+        # Convert the BGR image to RGB
+        rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        # Process the image and draw poses on it
+        result = pose.process(rgb_image)
+        if result.pose_landmarks:
+            mp_drawing.draw_landmarks(frame, result.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+
+        # Display the resulting frame
+        cv2.imshow('Little Dance Copiers', frame)
+
+        # Break the loop on 'q' key press
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    else:
+        break
+
+# When everything done, release the video capture and video write objects
+cap.release()
+
+# Closes all the frames
+cv2.destroyAllWindows()
