@@ -7,7 +7,7 @@ import csv
 video_running = True
 window_name = 'Little Dance Copiers'
 
-def run():
+def run(mode):
     global video_running
     video_running = True
     # Create a VideoCapture object
@@ -55,13 +55,31 @@ def run():
                 start_time = time.time()
                 if counter > 5:
                     video_running = False
-                
+
+                if counter == -1:
+                    #save idle pose
+                    idle_pose = [result.pose_landmarks.landmark[i] for i in range(33)]
+
                 if counter > 0 & counter <= 5:
-                    #write landmark x, y, z, visibility of all 33 landmarks to csv
-                    landmarks = [result.pose_landmarks.landmark[i] for i in range(33)]
-                    landmark_row = [[landmark.x, landmark.y, landmark.z, landmark.visibility] for landmark in landmarks]
-                    landmark_row = [item for sublist in landmark_row for item in sublist]
-                    writer.writerow(landmark_row)
+                    if mode == "dance":
+                        #write landmark x, y, z, visibility of all 33 landmarks to csv
+                        landmarks = [result.pose_landmarks.landmark[i] for i in range(33)]                    
+                        landmark_row = [[landmark.x - idle_pose[i].x, landmark.y - idle_pose[i].y, landmark.z - idle_pose[i].z, landmark.visibility] for i, landmark in enumerate(landmarks)]
+                        landmark_row = [item for sublist in landmark_row for item in sublist]
+                        writer.writerow(landmark_row)
+                    elif mode == "copy":
+                        #compare the current pose to the saved pose on row counter - 1
+                        landmarks = [result.pose_landmarks.landmark[i] for i in range(33)]
+                        with open('dance/landmarks.csv', newline='') as csvfile:
+                            reader = csv.reader(csvfile, delimiter=',', quotechar='|')
+                            for i, row in enumerate(reader):
+                                if i == counter - 1:
+                                    saved_pose = row
+                                    break
+                        #calculate the squared difference between the current pose and the saved pose
+                        squared_diff = 0
+                        for i, landmark in enumerate(landmarks):
+                            squared_diff += (landmark.x - float(saved_pose[i*4]))**2 + (landmark.y - float(saved_pose[i*4+1]))**2 + (landmark.z - float(saved_pose[i*4+2]))**2
 
             # Draw the counter in the bottom right corner
             text = str(counter) if counter >= 1 else "GO" if counter == 0 else str(-counter)
