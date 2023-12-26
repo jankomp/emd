@@ -7,6 +7,13 @@ import csv
 video_running = True
 window_name = 'Little Dance Copiers'
 
+def draw_border(frame, color=(0, 255, 0), border_size=10):
+    # Draw a colored border around the edges of the video
+    frame[:border_size, :] = color
+    frame[-border_size:, :] = color
+    frame[:, :border_size] = color
+    frame[:, -border_size:] = color
+
 def run(mode):
     global video_running
     video_running = True
@@ -25,7 +32,7 @@ def run(mode):
         print("Unable to read camera feed")
 
     # Initialize the counter
-    counter = -3
+    counter = -4
     start_time = time.time()
 
     # Open the CSV file for writing
@@ -53,14 +60,12 @@ def run(mode):
             if time.time() - start_time >= 1:
                 counter += 1
                 start_time = time.time()
-                if counter > 5:
-                    video_running = False
 
-                if counter == -1:
+                if counter == -1 and result.pose_landmarks:
                     #save idle pose
                     idle_pose = [result.pose_landmarks.landmark[i] for i in range(33)]
 
-                if counter > 0 & counter <= 5:
+                if counter > 0 and counter <= 5 and result.pose_landmarks:
                     if mode == "dance":
                         #write landmark x, y, z, visibility of all 33 landmarks to csv
                         landmarks = [result.pose_landmarks.landmark[i] for i in range(33)]                    
@@ -81,12 +86,18 @@ def run(mode):
                         for i, landmark in enumerate(landmarks):
                             squared_diff += (landmark.x - float(saved_pose[i*4]))**2 + (landmark.y - float(saved_pose[i*4+1]))**2 + (landmark.z - float(saved_pose[i*4+2]))**2
 
-            # Draw the counter in the bottom right corner
-            text = str(counter) if counter >= 1 else "GO" if counter == 0 else str(-counter)
-            (text_width, text_height), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 2, 2)
-            text_x = frame.shape[1] - text_width // 2 - 50
-            text_y = frame.shape[0] - 10
-            cv2.putText(frame, text, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 2)
+            if counter < 5:
+                # Draw the counter in the bottom right corner
+                text = str(counter) if counter >= 1 else "GO" if counter == 0 else str(-counter)
+                (text_width, text_height), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 2, 2)
+                text_x = frame.shape[1] - text_width // 2 - 50
+                text_y = frame.shape[0] - 10
+                cv2.putText(frame, text, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 2)
+
+            if counter > 5:
+                video_running = False
+            elif counter > 0 and time.time() - start_time <= 0.05:
+                draw_border(frame)
 
             # Display the resulting frame
             cv2.imshow(window_name, frame)
