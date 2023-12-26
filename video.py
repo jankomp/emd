@@ -2,6 +2,7 @@ import cv2
 import mediapipe as mp
 import time
 import csv
+import numpy as np
 
 # Global variable to control the video loop
 video_running = True
@@ -43,6 +44,12 @@ def run(mode):
     landmark_names = [f'landmark_{i}_{k}' for i in range(33) for k in ['x', 'y', 'z', 'visibility']]
     writer.writerow(landmark_names)
 
+    
+    ret, frame = cap.read()
+    screenshots = []
+    screenshot_height = frame.shape[0] // 5
+    screenshot_width = frame.shape[1] // 5
+
     while video_running:
         # Capture frame-by-frame
         ret, frame = cap.read()
@@ -61,11 +68,15 @@ def run(mode):
                 counter += 1
                 start_time = time.time()
 
+
                 if counter == -1 and result.pose_landmarks:
                     #save idle pose
                     idle_pose = [result.pose_landmarks.landmark[i] for i in range(33)]
 
                 if counter > 0 and counter <= 5 and result.pose_landmarks:
+                    screenshot = frame.copy()
+                    screenshots.append(screenshot)
+                    
                     if mode == "dance":
                         #write landmark x, y, z, visibility of all 33 landmarks to csv
                         landmarks = [result.pose_landmarks.landmark[i] for i in range(33)]                    
@@ -99,8 +110,18 @@ def run(mode):
             elif counter > 0 and time.time() - start_time <= 0.05:
                 draw_border(frame)
 
+            # Create a larger frame to display the video and screenshots
+            large_frame = np.zeros((frame.shape[0] + screenshot_height, frame.shape[1], 3), dtype=np.uint8)
+            large_frame[:frame.shape[0], :] = frame
+
+            # Place the screenshots below the video
+            for i, screenshot in enumerate(screenshots):
+                start_x = i * screenshot_width
+                end_x = start_x + screenshot_width
+                large_frame[frame.shape[0]:, start_x:end_x] = cv2.resize(screenshot, (screenshot_width, screenshot_height))
+
             # Display the resulting frame
-            cv2.imshow(window_name, frame)
+            cv2.imshow(window_name, large_frame)
 
             # Break the loop on 'q' key press
             if cv2.waitKey(1) & 0xFF == ord('q'):
