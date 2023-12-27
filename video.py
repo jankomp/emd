@@ -9,6 +9,27 @@ import ctypes
 video_running = True
 window_name = 'Little Dance Copiers'
 
+def center_and_scale(landmarks):
+    # Calculate the average position
+    avg_x = sum(landmark.x for landmark in landmarks) / len(landmarks)
+    avg_y = sum(landmark.y for landmark in landmarks) / len(landmarks)
+    avg_z = sum(landmark.z for landmark in landmarks) / len(landmarks)
+
+    # Calculate the standard deviation
+    std_dev = np.std([(landmark.x, landmark.y, landmark.z) for landmark in landmarks])
+
+    # Subtract the average position from each landmark and divide by the standard deviation
+    scaled_landmarks = []
+    for landmark in landmarks:
+        scaled_landmark = type(landmark)()  # Create a new instance of the same class
+        scaled_landmark.x = (landmark.x - avg_x) / std_dev
+        scaled_landmark.y = (landmark.y - avg_y) / std_dev
+        scaled_landmark.z = (landmark.z - avg_z) / std_dev
+        scaled_landmark.visibility = landmark.visibility  # Keep the same visibility
+        scaled_landmarks.append(scaled_landmark)
+
+    return scaled_landmarks, avg_x, avg_y, avg_z, std_dev
+
 def resize_window(window_name, cap):    # Get the size of the screen
     user32 = ctypes.windll.user32
     screen_width, screen_height = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
@@ -99,9 +120,7 @@ def run(mode):
                 start_time = time.time()
 
 
-                if counter == -1 and result.pose_landmarks:
-                    #save idle pose
-                    idle_pose = [result.pose_landmarks.landmark[i] for i in range(33)]
+                if counter == 0:
                     draw_border(frame, (255, 0, 0), 10)
 
                 if counter > 0 and counter <= 5 and result.pose_landmarks:
@@ -110,8 +129,9 @@ def run(mode):
 
                     if mode == "dance":
                         #write landmark x, y, z, visibility of all 33 landmarks to csv
-                        landmarks = [result.pose_landmarks.landmark[i] for i in range(33)]                    
-                        landmark_row = [[landmark.x - idle_pose[i].x, landmark.y - idle_pose[i].y, landmark.z - idle_pose[i].z, landmark.visibility] for i, landmark in enumerate(landmarks)]
+                        landmarks = [result.pose_landmarks.landmark[i] for i in range(33)]   
+                        scaled_landmarks, _, _, _, _ = center_and_scale(landmarks)                 
+                        landmark_row = [[landmark.x, landmark.y, landmark.z, landmark.visibility] for landmark in scaled_landmarks]
                         landmark_row = [item for sublist in landmark_row for item in sublist]
                         writer.writerow(landmark_row)
                     elif mode == "copy":
@@ -119,20 +139,21 @@ def run(mode):
                         # Initialize saved_pose
                         saved_pose = None
                         landmarks = [result.pose_landmarks.landmark[i] for i in range(33)]
-                        with open('dance/landmarks.csv', newline='') as csvfile:
+                        scaled_landmarks, _, _, _, _ = center_and_scale(landmarks)
+                        with open('dance/dance_landmarks.csv', newline='') as csvfile:
                             reader = csv.reader(csvfile, delimiter=',', quotechar='|')
                             for i, row in enumerate(reader):
                                 if i == counter:
                                     saved_pose = row
                                     break
-                        print(saved_pose)
 
                         #calculate the squared difference between the current pose and the saved pose                        
                         # Check if saved_pose is not None before calculating the squared difference
                         if saved_pose is not None:
                             squared_diff = 0
-                            for i, landmark in enumerate(landmarks):
+                            for i, landmark in enumerate(scaled_landmarks):
                                 squared_diff += (landmark.x - float(saved_pose[i*4]))**2 + (landmark.y - float(saved_pose[i*4+1]))**2 + (landmark.z - float(saved_pose[i*4+2]))**2
+                            print(f"squared difference of row {counter}: {squared_diff}")
 
             if counter < 5:
                 # Draw the counter in the bottom right corner
@@ -181,5 +202,5 @@ def stop():
     video_running = False
 
 if __name__ == "__main__":
-    run("dance")
-    #run("copy")
+    #run("dance")
+    run("copy")
