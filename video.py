@@ -3,10 +3,33 @@ import mediapipe as mp
 import time
 import csv
 import numpy as np
+import ctypes
 
 # Global variable to control the video loop
 video_running = True
 window_name = 'Little Dance Copiers'
+
+def resize_window(window_name, cap):    # Get the size of the screen
+    user32 = ctypes.windll.user32
+    screen_width, screen_height = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
+    #multiply screen width and height by 0.8 to get 80% of the screen size but cast to int
+    screen_width, screen_height = int(screen_width * 0.9), int(screen_height * 0.9)
+    # Get the aspect ratio of the video
+    ret, frame = cap.read()
+    if ret:
+        video_height, video_width = frame.shape[:2]
+        aspect_ratio = video_width / video_height
+
+    # Calculate the new width to maintain the aspect ratio
+    new_width = int(screen_height * aspect_ratio)
+
+    # Create a window
+    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+
+    # Resize the window
+    cv2.resizeWindow(window_name, new_width, screen_height)
+
+
 
 def draw_border(frame, color=(0, 255, 0), border_size=10):
     # Draw a colored border around the edges of the video
@@ -31,6 +54,9 @@ def run(mode):
     # Check if camera opened successfully
     if not cap.isOpened(): 
         print("Unable to read camera feed")
+
+    #resize the window
+    resize_window(window_name, cap)
 
     # Initialize the counter
     counter = -4
@@ -67,9 +93,6 @@ def run(mode):
             if result.pose_landmarks:
                 mp_drawing.draw_landmarks(frame, result.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
-            # Write the frame into the file 'output.mp4'
-            out.write(frame)
-
             # Update the counter every second
             if time.time() - start_time >= 1:
                 counter += 1
@@ -79,6 +102,7 @@ def run(mode):
                 if counter == -1 and result.pose_landmarks:
                     #save idle pose
                     idle_pose = [result.pose_landmarks.landmark[i] for i in range(33)]
+                    draw_border(frame, (255, 0, 0), 10)
 
                 if counter > 0 and counter <= 5 and result.pose_landmarks:
                     screenshot = frame.copy()
@@ -98,20 +122,17 @@ def run(mode):
                         with open('dance/landmarks.csv', newline='') as csvfile:
                             reader = csv.reader(csvfile, delimiter=',', quotechar='|')
                             for i, row in enumerate(reader):
-                                if i == counter - 1:
+                                if i == counter:
                                     saved_pose = row
                                     break
-                        print(landmarks)
                         print(saved_pose)
 
-                        #calculate the squared difference between the current pose and the saved pose
-                        
+                        #calculate the squared difference between the current pose and the saved pose                        
                         # Check if saved_pose is not None before calculating the squared difference
                         if saved_pose is not None:
                             squared_diff = 0
                             for i, landmark in enumerate(landmarks):
                                 squared_diff += (landmark.x - float(saved_pose[i*4]))**2 + (landmark.y - float(saved_pose[i*4+1]))**2 + (landmark.z - float(saved_pose[i*4+2]))**2
-                            print(squared_diff)
 
             if counter < 5:
                 # Draw the counter in the bottom right corner
@@ -119,7 +140,7 @@ def run(mode):
                 (text_width, text_height), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 2, 2)
                 text_x = frame.shape[1] - text_width // 2 - 50
                 text_y = frame.shape[0] - 10
-                cv2.putText(frame, text, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 2)
+                cv2.putText(frame, text, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 2.5, (255, 255, 255), 2)
 
             if counter > 5:
                 video_running = False
@@ -136,6 +157,8 @@ def run(mode):
                 end_x = start_x + screenshot_width
                 large_frame[frame.shape[0]:, start_x:end_x] = cv2.resize(screenshot, (screenshot_width, screenshot_height))
 
+            # Write the frame into the file 'output.mp4'
+            out.write(frame)
             # Display the resulting frame
             cv2.imshow(window_name, large_frame)
 
