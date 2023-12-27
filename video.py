@@ -36,8 +36,12 @@ def run(mode):
     counter = -4
     start_time = time.time()
 
+    # Define the codec and create a VideoWriter object
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # or use 'XVID'
+    out = cv2.VideoWriter(f'dance/{mode}_output.mp4', fourcc, 20.0, (640, 480))
+
     # Open the CSV file for writing
-    file = open('dance/landmarks.csv', 'w', newline='')
+    file = open(f'dance/{mode}_landmarks.csv', 'w', newline='')
     writer = csv.writer(file)
     
     # Write the header row
@@ -63,6 +67,9 @@ def run(mode):
             if result.pose_landmarks:
                 mp_drawing.draw_landmarks(frame, result.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
+            # Write the frame into the file 'output.mp4'
+            out.write(frame)
+
             # Update the counter every second
             if time.time() - start_time >= 1:
                 counter += 1
@@ -76,7 +83,7 @@ def run(mode):
                 if counter > 0 and counter <= 5 and result.pose_landmarks:
                     screenshot = frame.copy()
                     screenshots.append(screenshot)
-                    
+
                     if mode == "dance":
                         #write landmark x, y, z, visibility of all 33 landmarks to csv
                         landmarks = [result.pose_landmarks.landmark[i] for i in range(33)]                    
@@ -85,6 +92,8 @@ def run(mode):
                         writer.writerow(landmark_row)
                     elif mode == "copy":
                         #compare the current pose to the saved pose on row counter - 1
+                        # Initialize saved_pose
+                        saved_pose = None
                         landmarks = [result.pose_landmarks.landmark[i] for i in range(33)]
                         with open('dance/landmarks.csv', newline='') as csvfile:
                             reader = csv.reader(csvfile, delimiter=',', quotechar='|')
@@ -92,10 +101,17 @@ def run(mode):
                                 if i == counter - 1:
                                     saved_pose = row
                                     break
+                        print(landmarks)
+                        print(saved_pose)
+
                         #calculate the squared difference between the current pose and the saved pose
-                        squared_diff = 0
-                        for i, landmark in enumerate(landmarks):
-                            squared_diff += (landmark.x - float(saved_pose[i*4]))**2 + (landmark.y - float(saved_pose[i*4+1]))**2 + (landmark.z - float(saved_pose[i*4+2]))**2
+                        
+                        # Check if saved_pose is not None before calculating the squared difference
+                        if saved_pose is not None:
+                            squared_diff = 0
+                            for i, landmark in enumerate(landmarks):
+                                squared_diff += (landmark.x - float(saved_pose[i*4]))**2 + (landmark.y - float(saved_pose[i*4+1]))**2 + (landmark.z - float(saved_pose[i*4+2]))**2
+                            print(squared_diff)
 
             if counter < 5:
                 # Draw the counter in the bottom right corner
@@ -134,10 +150,13 @@ def run(mode):
 
     # When everything done, release the video capture and video write objects
     cap.release()
-
-    # Closes all the frames
+    out.release()
     cv2.destroyWindow(window_name)
 
 def stop():
     global video_running
     video_running = False
+
+if __name__ == "__main__":
+    run("dance")
+    #run("copy")
