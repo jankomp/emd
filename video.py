@@ -4,6 +4,7 @@ import time
 import csv
 import numpy as np
 import ctypes
+import pygame.mixer
 
 # Global variable to control the video loop
 video_running = True
@@ -79,6 +80,11 @@ def run(mode):
     #resize the window
     resize_window(window_name, cap)
 
+    # Initialize the mixer
+    pygame.mixer.init()
+    error_sound = pygame.mixer.Sound('sounds/error.wav')
+    correct_sound = pygame.mixer.Sound('sounds/correct.wav')
+
     # Initialize the counter
     counter = -4
     start_time = time.time()
@@ -101,6 +107,8 @@ def run(mode):
     screenshot_height = frame.shape[0] // 5
     screenshot_width = frame.shape[1] // 5
 
+    border_color = (0, 255, 0)
+    
     while video_running:
         # Capture frame-by-frame
         ret, frame = cap.read()
@@ -126,7 +134,6 @@ def run(mode):
                 if counter > 0 and counter <= 5 and result.pose_landmarks:
                     screenshot = frame.copy()
                     screenshots.append(screenshot)
-
                     if mode == "dance":
                         #write landmark x, y, z, visibility of all 33 landmarks to csv
                         landmarks = [result.pose_landmarks.landmark[i] for i in range(33)]   
@@ -134,6 +141,8 @@ def run(mode):
                         landmark_row = [[landmark.x, landmark.y, landmark.z, landmark.visibility] for landmark in scaled_landmarks]
                         landmark_row = [item for sublist in landmark_row for item in sublist]
                         writer.writerow(landmark_row)
+
+                        correct_sound.play()
                     elif mode == "copy":
                         #compare the current pose to the saved pose on row counter - 1
                         # Initialize saved_pose
@@ -147,13 +156,20 @@ def run(mode):
                                     saved_pose = row
                                     break
 
-                        #calculate the squared difference between the current pose and the saved pose                        
+                        # calculate the squared difference between the current pose and the saved pose                        
                         # Check if saved_pose is not None before calculating the squared difference
                         if saved_pose is not None:
                             squared_diff = 0
                             for i, landmark in enumerate(scaled_landmarks):
                                 squared_diff += (landmark.x - float(saved_pose[i*4]))**2 + (landmark.y - float(saved_pose[i*4+1]))**2 + (landmark.z - float(saved_pose[i*4+2]))**2
                             print(f"squared difference of row {counter}: {squared_diff}")
+                            # if the squared difference is greater than 0.5, draw a red border and play alow sound
+                            if squared_diff > 5:
+                                border_color = (0, 0, 255)
+                                error_sound.play()
+                            else:
+                                border_color = (0, 255, 0)
+                                correct_sound.play()
 
             if counter < 5:
                 # Draw the counter in the bottom right corner
@@ -166,7 +182,7 @@ def run(mode):
             if counter > 5:
                 video_running = False
             elif counter > 0 and time.time() - start_time <= 0.05:
-                draw_border(frame)
+                draw_border(frame, border_color, 10)
 
             # Create a larger frame to display the video and screenshots
             large_frame = np.zeros((frame.shape[0] + screenshot_height, frame.shape[1], 3), dtype=np.uint8)
