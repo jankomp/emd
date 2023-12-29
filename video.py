@@ -60,7 +60,7 @@ def draw_border(frame, color=(0, 255, 0), border_size=10):
     frame[:, :border_size] = color
     frame[:, -border_size:] = color
 
-def run(mode):
+def run(mode, moves=5, bpm=60):
     global video_running
     video_running = True
     # Create a VideoCapture object
@@ -84,6 +84,7 @@ def run(mode):
     pygame.mixer.init()
     error_sound = pygame.mixer.Sound('sounds/error.wav')
     correct_sound = pygame.mixer.Sound('sounds/correct.wav')
+    countdown_sound = pygame.mixer.Sound('sounds/countdown.wav')
 
     # Initialize the counter
     counter = -4
@@ -104,10 +105,12 @@ def run(mode):
     
     ret, frame = cap.read()
     screenshots = []
-    screenshot_height = frame.shape[0] // 5
-    screenshot_width = frame.shape[1] // 5
+    screenshot_height = frame.shape[0] // moves
+    screenshot_width = frame.shape[1] // moves
 
     border_color = (0, 255, 0)
+
+    delta_move = 60.0 / bpm
     
     while video_running:
         # Capture frame-by-frame
@@ -123,15 +126,16 @@ def run(mode):
                 mp_drawing.draw_landmarks(frame, result.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
             # Update the counter every second
-            if time.time() - start_time >= 1:
+            if time.time() - start_time >= delta_move:
                 counter += 1
                 start_time = time.time()
 
 
-                if counter == 0:
+                if counter <= 0:
+                    countdown_sound.play()
                     draw_border(frame, (255, 0, 0), 10)
 
-                if counter > 0 and counter <= 5 and result.pose_landmarks:
+                if counter > 0 and counter <= moves and result.pose_landmarks:
                     screenshot = frame.copy()
                     screenshots.append(screenshot)
                     if mode == "dance":
@@ -171,7 +175,7 @@ def run(mode):
                                 border_color = (0, 255, 0)
                                 correct_sound.play()
 
-            if counter < 5:
+            if counter < moves:
                 # Draw the counter in the bottom right corner
                 text = str(counter) if counter >= 1 else "GO" if counter == 0 else str(-counter)
                 (text_width, text_height), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 2, 2)
@@ -179,7 +183,7 @@ def run(mode):
                 text_y = frame.shape[0] - 10
                 cv2.putText(frame, text, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 2.5, (255, 255, 255), 2)
 
-            if counter > 5:
+            if counter > moves:
                 video_running = False
             elif counter > 0 and time.time() - start_time <= 0.05:
                 draw_border(frame, border_color, 10)
