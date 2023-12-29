@@ -1,5 +1,6 @@
 import cv2
 import mediapipe as mp
+from mediapipe.framework.formats import landmark_pb2
 import time
 import csv
 import numpy as np
@@ -10,7 +11,26 @@ import pygame.mixer
 video_running = True
 window_name = 'Little Dance Copiers'
 
+def exclude_landmarks_and_connections(result, mp_pose):
+        # Exclude landmarks 0 to 10 and the respective connections
+        filtered_landmarks = [result.pose_landmarks.landmark[i] for i in range(11, 33)]
+        # Create a new NormalizedLandmarkList and populate it with the filtered landmarks
+        landmark_list = landmark_pb2.NormalizedLandmarkList()
+        for landmark in filtered_landmarks:
+            landmark_list.landmark.add().CopyFrom(landmark)
+
+        # Filter out connections that involve landmarks 1 to 10
+        filtered_pose_connections = [connection for connection in mp_pose.POSE_CONNECTIONS
+                                    if connection[0] not in range(1, 11) and connection[1] not in range(1, 11)]
+        # Adjust the indices of the connections to account for the removed landmarks
+        adjusted_pose_connections = [(connection[0] - 11, connection[1] - 11) for connection in filtered_pose_connections]
+
+        return landmark_list, adjusted_pose_connections
+
 def center_and_scale(landmarks):
+    # Filter out landmarks 1 to 10
+    landmarks = [landmark for i, landmark in enumerate(landmarks) if i == 0 or i >= 11]
+    
     # Calculate the average position
     avg_x = sum(landmark.x for landmark in landmarks) / len(landmarks)
     avg_y = sum(landmark.y for landmark in landmarks) / len(landmarks)
@@ -122,8 +142,11 @@ def run(mode, moves=5, bpm=60):
 
             # Process the image and draw poses on it
             result = pose.process(rgb_image)
-            if result.pose_landmarks:
-                mp_drawing.draw_landmarks(frame, result.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+        if result.pose_landmarks:
+            # Exclude landmarks 0 to 10 and the respective connections
+            landmark_list, adjusted_pose_connections = exclude_landmarks_and_connections(result, mp_pose)
+            # Draw the landmarks with the adjusted connections
+            mp_drawing.draw_landmarks(frame, landmark_list, adjusted_pose_connections)
 
             # Update the counter every second
             if time.time() - start_time >= delta_move:
