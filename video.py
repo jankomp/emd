@@ -1,12 +1,9 @@
 import cv2
-import mediapipe as mp
-from mediapipe.framework.formats import landmark_pb2
 import time
-import csv
 import numpy as np
 import ctypes
 import pygame.mixer
-from gesture.gesture_recognition import GestureRecognition
+from gesture.gesture import GestureRecognition
 
 # Global variable to control the video loop
 video_running = True
