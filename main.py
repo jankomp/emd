@@ -59,7 +59,11 @@ def voice_command():
             response_text = "Stopping!"
         elif command.find("moves") != -1:
             try:
-                moves = w2n.word_to_num(command.split(" ")[0])
+                new_moves = w2n.word_to_num(command.split(" ")[0])
+                if new_moves > 20 or new_moves < 1:
+                    raise ValueError
+                else:
+                    moves = new_moves
                 print(f'moves: {moves}')
                 response_text = f"Setting number of moves to {moves}"
             except ValueError:
@@ -67,7 +71,11 @@ def voice_command():
                 response_text = "Invalid number of moves"
         elif command.find("beats per minute") != -1:
             try:
-                bpm = w2n.word_to_num(command.split(" ")[0])
+                new_bpm = w2n.word_to_num(command.split(" ")[0])
+                if new_bpm > 120 or new_bpm < 10:
+                    raise ValueError
+                else:
+                    bpm = new_bpm
                 print(f'bpm: {bpm}')
                 response_text = f"Setting bpm to {bpm}"
             except ValueError:
