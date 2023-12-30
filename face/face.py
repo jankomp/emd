@@ -34,6 +34,9 @@ class FacialRecognition:
         return frame
     
     def estimate_happiness(self):
+        if self.face_landmarks is None:
+            return 0.75
+
         # Get the landmarks for the corners of the mouth (AU12 ~ lip corner puller)
         mouth_corner_left = self.face_landmarks.landmark[61]
         mouth_corner_right = self.face_landmarks.landmark[291]

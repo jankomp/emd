@@ -89,7 +89,8 @@ def run(mode, moves=5, bpm=60, happy_face=False):
             frame = gr.draw_landmarks(rgb_image, frame)
 
             # draw the face landmarks
-            frame = fr.draw_face_landmarks(frame)
+            if happy_face:
+                frame = fr.draw_face_landmarks(frame)
 
             # Update the counter every second
             if time.time() - start_time >= delta_move:
@@ -111,19 +112,20 @@ def run(mode, moves=5, bpm=60, happy_face=False):
                     elif mode == "copy":
                         #compare the current pose to the saved pose on row counter
                         squared_diff = gr.copy(counter)
+                        print(f"squared difference of row {counter}: {squared_diff}")
                         
-                        # if the squared difference is greater than 0.5, draw a red border and play alow sound
-                        if squared_diff > 5:
+                        # if the squared difference is greater than 3, draw a red border and play a low sound
+                        if squared_diff > 3:
                             border_color = (0, 0, 255)
                             error_sound.play()
                         else:
                             border_color = (0, 255, 0)
                             correct_sound.play()
                 
-                if happy_face:
-                    # score happiness of face
-                    happiness_score = fr.estimate_happiness()
-                    print(f"happiness score: {happiness_score}")
+                        # score happiness of face
+                        if happy_face:
+                            happiness_score = fr.estimate_happiness()
+                            print(f"happiness score: {happiness_score}")
 
             if counter < moves:
                 # Draw the counter in the bottom right corner

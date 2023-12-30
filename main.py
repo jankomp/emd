@@ -10,7 +10,7 @@ moves = 5
 bpm = 60
 happy_face = False
 response_text = ""
-settings_text = f"{moves} moves, {bpm} bpm"
+settings_text = text=f"{moves} moves, {bpm} bpm, face: {'on' if happy_face else 'off'}"
 
 def cleanup():
     if os.path.exists("dance/copy_landmarks.csv"):
@@ -82,17 +82,17 @@ def voice_command():
             except ValueError:
                 print("Invalid number of moves")
                 response_text = "Invalid number of moves"
-        elif command == "happy face on":
+        elif command == "face on":
             happy_face = True
-            response_text = "Happy face on"
-        elif command == "happy face off":
+            response_text = "Happy face detector on"
+        elif command == "face off":
             happy_face = False
-            response_text = "Happy face off"
+            response_text = "Happy face detector off"
         else:
             response_text = "Invalid command"
             
         response_label.config(text=response_text)
-        settings_label.config(text=f"{moves} moves, {bpm} bpm")
+        settings_label.config(text=f"{moves} moves, {bpm} bpm, face: {'on' if happy_face else 'off'}")
 
 # Create the main window
 window = tk.Tk()
@@ -101,15 +101,18 @@ window.title("Little Dance Copiers")
 # Uncomment on release
 #atexit.register(cleanup)
 
+title_label = tk.Label(window, text="Little Dance Copiers", font=("Arial", 32))
+title_label.pack(padx=10, pady=10)
+
 # Create a label
-label_txt = """Welcome to Little Dance Copiers!\n\n
+description_label = """
     Please say 'dance' to start recording your dance moves.\n
     Say 'copy' to start copying the dance moves.\n
     Say '{1...20} moves' to set the number of moves.\n
     Say '{10...120} beats per minute' to set the bpm.\n
-    Say 'happy face on' to turn on the happy face detector.\n
-    Say 'happy face off' to turn off the happy face detector.\n"""
-label = tk.Label(window, text=label_txt)
+    Say 'face on' to turn on the happy face detector.\n
+    Say 'face off' to turn off the happy face detector.\n"""
+label = tk.Label(window, text=description_label, font=("Arial", 14))
 label.pack(padx=10, pady=10)
 
 # Uncomment on release
@@ -118,11 +121,11 @@ label.pack(padx=10, pady=10)
 #text_to_speech(engine, label_txt)
 
 # Create a response label
-response_label = tk.Label(window, text=response_text)
+response_label = tk.Label(window, text=response_text, font=("Arial", 20))
 response_label.pack(padx=10, pady=10)
 
 # Create a response label
-settings_label = tk.Label(window, text=settings_text)
+settings_label = tk.Label(window, text=settings_text, font=("Arial", 20))
 settings_label.pack(padx=10, pady=10)
 
 listen_for_command()
