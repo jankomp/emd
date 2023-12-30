@@ -8,6 +8,7 @@ import pyttsx3
 
 moves = 5
 bpm = 60
+happy_face = False
 response_text = ""
 settings_text = f"{moves} moves, {bpm} bpm"
 
@@ -45,12 +46,12 @@ def listen_for_command():
     voice_thread.start()
 
 def voice_command():
-    global moves, bpm
+    global moves, bpm, happy_face
     global response_text
     while True:
         command = str(recognize_command())
         if command == "dance" or command == "copy":
-            video_thread = threading.Thread(target=run, kwargs={'mode': command, 'moves': moves, 'bpm': bpm})
+            video_thread = threading.Thread(target=run, kwargs={'mode': command, 'moves': moves, 'bpm': bpm, 'happy_face': happy_face})
             video_thread.daemon = True
             video_thread.start()
             response_text = f"Starting to {command}!"
@@ -81,6 +82,12 @@ def voice_command():
             except ValueError:
                 print("Invalid number of moves")
                 response_text = "Invalid number of moves"
+        elif command == "happy face on":
+            happy_face = True
+            response_text = "Happy face on"
+        elif command == "happy face off":
+            happy_face = False
+            response_text = "Happy face off"
         else:
             response_text = "Invalid command"
             
@@ -95,11 +102,13 @@ window.title("Little Dance Copiers")
 #atexit.register(cleanup)
 
 # Create a label
-label_txt = """Welcome to Little Dance Copiers!\n
-    \nPlease say 'dance' to start recording your dance moves.\n
+label_txt = """Welcome to Little Dance Copiers!\n\n
+    Please say 'dance' to start recording your dance moves.\n
     Say 'copy' to start copying the dance moves.\n
     Say '{1...20} moves' to set the number of moves.\n
-    Say '{10...120} beats per minute' to set the bpm.\n"""
+    Say '{10...120} beats per minute' to set the bpm.\n
+    Say 'happy face on' to turn on the happy face detector.\n
+    Say 'happy face off' to turn off the happy face detector.\n"""
 label = tk.Label(window, text=label_txt)
 label.pack(padx=10, pady=10)
 

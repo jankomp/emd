@@ -4,6 +4,8 @@ import numpy as np
 import ctypes
 import pygame.mixer
 from gesture.gesture import GestureRecognition
+from face.face import FacialRecognition
+
 
 # Global variable to control the video loop
 video_running = True
@@ -36,7 +38,7 @@ def draw_border(frame, color=(0, 255, 0), border_size=10):
     frame[:, :border_size] = color
     frame[:, -border_size:] = color
 
-def run(mode, moves=5, bpm=60):
+def run(mode, moves=5, bpm=60, happy_face=False):
     global video_running
     video_running = True
     # Create a VideoCapture object
@@ -73,6 +75,7 @@ def run(mode, moves=5, bpm=60):
     delta_move = 60.0 / bpm
 
     gr = GestureRecognition(csv_filename=f'dance/{mode}_landmarks.csv')
+    fr = FacialRecognition()
     
     while video_running:
         # Capture frame-by-frame
@@ -84,6 +87,9 @@ def run(mode, moves=5, bpm=60):
 
             # draw the landmarks
             frame = gr.draw_landmarks(rgb_image, frame)
+
+            # draw the face landmarks
+            frame = fr.draw_face_landmarks(frame)
 
             # Update the counter every second
             if time.time() - start_time >= delta_move:
@@ -113,6 +119,11 @@ def run(mode, moves=5, bpm=60):
                         else:
                             border_color = (0, 255, 0)
                             correct_sound.play()
+                
+                if happy_face:
+                    # score happiness of face
+                    happiness_score = fr.estimate_happiness()
+                    print(f"happiness score: {happiness_score}")
 
             if counter < moves:
                 # Draw the counter in the bottom right corner
@@ -160,4 +171,4 @@ def stop():
 
 if __name__ == "__main__":
     #run("dance")
-    run("copy")
+    run("copy", 5, 60, True)

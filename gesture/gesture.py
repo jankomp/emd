@@ -100,7 +100,7 @@ class GestureRecognition:
         if saved_pose is not None:
             for i, landmark in enumerate(scaled_landmarks):
                 squared_diff += (landmark.x - float(saved_pose[i*4]))**2 + (landmark.y - float(saved_pose[i*4+1]))**2 + (landmark.z - float(saved_pose[i*4+2]))**2
-            print(f"squared difference of row {counter}: {squared_diff}")
+            #print(f"squared difference of row {counter}: {squared_diff}")
 
         return squared_diff
     
