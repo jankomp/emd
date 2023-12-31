@@ -5,6 +5,7 @@ import ctypes
 import pygame.mixer
 from gesture.gesture import GestureRecognition
 from face.face import FacialRecognition
+import matplotlib.pyplot as plt
 
 
 # Global variable to control the video loop
@@ -59,7 +60,7 @@ def run(mode, moves=5, bpm=60, happy_face=False):
 
     # Initialize the counter
     counter = -4
-    pose_counter = counter * 3
+    pose_counter = counter * 5
     start_time = time.time()
 
     # Define the codec and create a VideoWriter object
@@ -78,6 +79,9 @@ def run(mode, moves=5, bpm=60, happy_face=False):
     gr = GestureRecognition(csv_filename=f'dance/{mode}_landmarks.csv')
     fr = FacialRecognition()
 
+    all_happiness = []
+    all_sq_diff = []
+    all_dtw = []
     
     while video_running:
         # Capture frame-by-frame
@@ -95,7 +99,7 @@ def run(mode, moves=5, bpm=60, happy_face=False):
                 frame = fr.draw_face_landmarks(frame)
 
             # Update the counter every second
-            if time.time() - start_time >= delta_move / 3.0:
+            if time.time() - start_time >= delta_move / 5.0:
                 pose_counter += 1
                 start_time = time.time()
 
@@ -104,7 +108,7 @@ def run(mode, moves=5, bpm=60, happy_face=False):
                     gr.dance()
 
                 # if it's not a 3rd iterarion we are done, otherwise we increment counter
-                if pose_counter % 3 != 0:
+                if pose_counter % 5 != 0:
                     continue
                 else:
                     counter += 1
@@ -138,9 +142,14 @@ def run(mode, moves=5, bpm=60, happy_face=False):
                             print(f"happiness score: {happiness_score}")
 
                         # Call dynamicTimeWarping with poseCounter - 2 and poseCounter and a set of the last three poses
-                        if pose_counter >= 3:
-                            dtw_score = gr.dynamicTimeWarping(pose_counter - 2, pose_counter)
-                            print(f"DTW score of rows {pose_counter - 2} to {pose_counter}: {dtw_score}")
+                        dtw_score = gr.dynamicTimeWarping(pose_counter - 2, pose_counter)
+                        print(f"DTW score of rows {pose_counter - 2} to {pose_counter}: {dtw_score}")
+
+                        # Append the scores to the lists
+                        if happy_face:
+                            all_happiness.append(happiness_score)
+                        all_sq_diff.append(squared_diff)
+                        all_dtw.append(dtw_score)
 
 
             if counter < moves:
@@ -182,6 +191,15 @@ def run(mode, moves=5, bpm=60, happy_face=False):
     out.release()
     cv2.destroyWindow(window_name)
     gr.cleanup()
+
+    # display a plot of the three scores
+    if mode == "copy":
+        plt.plot(all_sq_diff, label="Squared Difference")
+        plt.plot(all_dtw, label="Dynamic Time Warping")
+        if happy_face:
+            plt.plot(all_happiness, label="Happiness")
+        plt.legend()
+        plt.savefig(f'dance/{mode}_scores.png')
 
 def stop():
     global video_running
