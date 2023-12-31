@@ -6,6 +6,7 @@ import pygame.mixer
 from gesture.gesture import GestureRecognition
 from face.face import FacialRecognition
 import matplotlib.pyplot as plt
+from music import Music
 
 
 # Global variable to control the video loop
@@ -58,10 +59,15 @@ def run(mode, moves=5, bpm=60, happy_face=False):
     correct_sound = pygame.mixer.Sound('sounds/correct.wav')
     countdown_sound = pygame.mixer.Sound('sounds/countdown.wav')
 
+    music = Music()
+    if mode == "dance":
+        music.generate(moves)
+
     # Initialize the counter
     counter = -4
     pose_counter = counter * 5
     start_time = time.time()
+    frame_time = start_time
 
     # Define the codec and create a VideoWriter object
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # or use 'XVID'
@@ -112,17 +118,18 @@ def run(mode, moves=5, bpm=60, happy_face=False):
                     continue
                 else:
                     counter += 1
+                    frame_time = time.time()
                 
                 if counter <= 0:
                     countdown_sound.play()
-                    draw_border(frame, (255, 0, 0), 10)
+                    border_color = (255, 0, 0)
 
                 if counter > 0 and counter <= moves:
                     screenshot = frame.copy()
                     screenshots.append(screenshot)
                     if mode == "dance":
-
-                        correct_sound.play()
+                        border_color = (0, 255, 0)
+                        music.play_melody_at_index(counter - 1)
                     elif mode == "copy":
                         #compare the current pose to the saved pose on row counter
                         squared_diff = gr.copy(pose_counter)
@@ -134,7 +141,7 @@ def run(mode, moves=5, bpm=60, happy_face=False):
                             error_sound.play()
                         else:
                             border_color = (0, 255, 0)
-                            correct_sound.play()
+                            music.play_melody_at_index(counter - 1)
                 
                         # score happiness of face
                         if happy_face:
@@ -162,7 +169,7 @@ def run(mode, moves=5, bpm=60, happy_face=False):
 
             if counter > moves:
                 video_running = False
-            elif counter > 0 and time.time() - start_time <= 0.05:
+            elif time.time() - frame_time <= 0.05:
                 draw_border(frame, border_color, 10)
 
             # Create a larger frame to display the video and screenshots
