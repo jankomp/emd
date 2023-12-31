@@ -1,7 +1,7 @@
 import tkinter as tk
 import threading
 from video import run, stop
-from voice.recognize_commands import recognize_command
+from voice.voice import recognize_command
 import os
 import word2number.w2n as w2n
 import pyttsx3

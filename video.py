@@ -59,6 +59,7 @@ def run(mode, moves=5, bpm=60, happy_face=False):
 
     # Initialize the counter
     counter = -4
+    pose_counter = counter * 3
     start_time = time.time()
 
     # Define the codec and create a VideoWriter object
@@ -76,6 +77,7 @@ def run(mode, moves=5, bpm=60, happy_face=False):
 
     gr = GestureRecognition(csv_filename=f'dance/{mode}_landmarks.csv')
     fr = FacialRecognition()
+
     
     while video_running:
         # Capture frame-by-frame
@@ -93,11 +95,20 @@ def run(mode, moves=5, bpm=60, happy_face=False):
                 frame = fr.draw_face_landmarks(frame)
 
             # Update the counter every second
-            if time.time() - start_time >= delta_move:
-                counter += 1
+            if time.time() - start_time >= delta_move / 3.0:
+                pose_counter += 1
                 start_time = time.time()
 
+                # Save pose every time pose_counter increments
+                if pose_counter > 0:
+                    gr.dance()
 
+                # if it's not a 3rd iterarion we are done, otherwise we increment counter
+                if pose_counter % 3 != 0:
+                    continue
+                else:
+                    counter += 1
+                
                 if counter <= 0:
                     countdown_sound.play()
                     draw_border(frame, (255, 0, 0), 10)
@@ -106,13 +117,12 @@ def run(mode, moves=5, bpm=60, happy_face=False):
                     screenshot = frame.copy()
                     screenshots.append(screenshot)
                     if mode == "dance":
-                        gr.dance()
 
                         correct_sound.play()
                     elif mode == "copy":
                         #compare the current pose to the saved pose on row counter
-                        squared_diff = gr.copy(counter)
-                        print(f"squared difference of row {counter}: {squared_diff}")
+                        squared_diff = gr.copy(pose_counter)
+                        print(f"squared difference of row {pose_counter}: {squared_diff}")
                         
                         # if the squared difference is greater than 3, draw a red border and play a low sound
                         if squared_diff > 3:
@@ -126,6 +136,12 @@ def run(mode, moves=5, bpm=60, happy_face=False):
                         if happy_face:
                             happiness_score = fr.estimate_happiness()
                             print(f"happiness score: {happiness_score}")
+
+                        # Call dynamicTimeWarping with poseCounter - 2 and poseCounter and a set of the last three poses
+                        if pose_counter >= 3:
+                            dtw_score = gr.dynamicTimeWarping(pose_counter - 2, pose_counter)
+                            print(f"DTW score of rows {pose_counter - 2} to {pose_counter}: {dtw_score}")
+
 
             if counter < moves:
                 # Draw the counter in the bottom right corner
@@ -173,4 +189,4 @@ def stop():
 
 if __name__ == "__main__":
     #run("dance")
-    run("copy", 5, 60, True)
+    run("copy", 5, 120, True)

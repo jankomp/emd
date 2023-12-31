@@ -16,8 +16,17 @@ class GestureRecognition:
         self.landmark_names = [f'landmark_{i}_{k}' for i in range(33) for k in ['x', 'y', 'z', 'visibility']]
         self.writer.writerow(self.landmark_names)
         # variables
-        self.landmark_list = None
+        self.raw_landmark_list = None
+        self.current_landmarks = None
         self.adjusted_pose_connections = None
+        self.last_three_poses = []
+
+    def listToNormailizedLandmarkList(self, landmarks):
+        # Create a new NormalizedLandmarkList and populate it with the filtered landmarks
+        landmark_list = landmark_pb2.NormalizedLandmarkList()
+        for landmark in landmarks:
+            landmark_list.landmark.add().CopyFrom(landmark)
+        return landmark_list
 
     def exclude_landmarks_and_connections(self, result):
         # Exclude landmarks 0 to 10 and the respective connections
@@ -28,9 +37,7 @@ class GestureRecognition:
         adjusted_pose_connections = [(connection[0] - 11, connection[1] - 11) for connection in filtered_pose_connections]
 
         # Create a new NormalizedLandmarkList and populate it with the filtered landmarks
-        landmark_list = landmark_pb2.NormalizedLandmarkList()
-        for landmark in filtered_landmarks:
-            landmark_list.landmark.add().CopyFrom(landmark)
+        landmark_list = self.listToNormailizedLandmarkList(filtered_landmarks)
 
         return landmark_list, adjusted_pose_connections
 
@@ -38,20 +45,23 @@ class GestureRecognition:
         # Get the landmarks from the frame
         results = self.pose.process(rgb_image)
         if results.pose_landmarks:
-            self.landmark_list, self.adjusted_pose_connections = self.exclude_landmarks_and_connections(results)
+            self.raw_landmark_list, self.adjusted_pose_connections = self.exclude_landmarks_and_connections(results)
+            self.current_landmarks, _, _, _, _ = self.center_and_scale(self.raw_landmark_list.landmark)
+
+        # Update the last three poses
+        self.last_three_poses.append(self.current_landmarks.landmark)
+        if len(self.last_three_poses) > 3:
+            self.last_three_poses.pop(0)
 
     def draw_landmarks(self, rgb_image, frame):
         self.get_landmarks(rgb_image)
 
         # Draw the landmarks with the adjusted connections
-        self.mp_drawing.draw_landmarks(frame, self.landmark_list, self.adjusted_pose_connections)
+        self.mp_drawing.draw_landmarks(frame, self.raw_landmark_list, self.adjusted_pose_connections)
 
         return frame
 
-    def center_and_scale(self, landmarks):
-        # Filter out landmarks 1 to 10
-        landmarks = [landmark for i, landmark in enumerate(landmarks) if i == 0 or i >= 11]
-        
+    def center_and_scale(self, landmarks):        
         # Calculate the average position
         avg_x = sum(landmark.x for landmark in landmarks) / len(landmarks)
         avg_y = sum(landmark.y for landmark in landmarks) / len(landmarks)
@@ -69,21 +79,18 @@ class GestureRecognition:
             scaled_landmark.z = (landmark.z - avg_z) / std_dev
             scaled_landmark.visibility = landmark.visibility  # Keep the same visibility
             scaled_landmarks.append(scaled_landmark)
+        
+        scaled_landmarks = self.listToNormailizedLandmarkList(scaled_landmarks)
 
         return scaled_landmarks, avg_x, avg_y, avg_z, std_dev
     
     def dance(self):
-        # Save the landmarks to the CSV
-        scaled_landmarks, _, _, _, _ = self.center_and_scale(self.landmark_list.landmark)                 
-        landmark_row = [[landmark.x, landmark.y, landmark.z, landmark.visibility] for landmark in scaled_landmarks]
+        # Save the landmarks to the CSV               
+        landmark_row = [[landmark.x, landmark.y, landmark.z, landmark.visibility] for landmark in self.current_landmarks.landmark]
         landmark_row = [item for sublist in landmark_row for item in sublist]
         self.writer.writerow(landmark_row)
 
-        return scaled_landmarks
-
     def copy(self, counter):
-        # also saved the copied landmarks to a csv file
-        scaled_landmarks = self.dance()
         # Return the difference between the saved landmarks and the current ones
         # Initialize saved_pose
         saved_pose = None
@@ -94,15 +101,46 @@ class GestureRecognition:
                     saved_pose = row
                     break
         
-        squared_diff = 0
+        squared_diff = self.compare(self.current_landmarks.landmark, saved_pose)
+
+        return squared_diff        
+    
+    def compare(self, landmarks_1, landmarks_2):
+        squared_diff = 0.0
         # calculate the squared difference between the current pose and the saved pose                        
         # Check if saved_pose is not None before calculating the squared difference
-        if saved_pose is not None:
-            for i, landmark in enumerate(scaled_landmarks):
-                squared_diff += (landmark.x - float(saved_pose[i*4]))**2 + (landmark.y - float(saved_pose[i*4+1]))**2 + (landmark.z - float(saved_pose[i*4+2]))**2
+        if landmarks_1 is  None or landmarks_2 is None:
+            return 10.0
+            
+        for i, landmark in enumerate(landmarks_1):
+            squared_diff += (landmark.x - float(landmarks_2[i*4]))**2 + (landmark.y - float(landmarks_2[i*4+1]))**2 + (landmark.z - float(landmarks_2[i*4+2]))**2
 
         return squared_diff
-    
+
+    def dynamicTimeWarping(self, fromRow, toRow):
+        # Read the saved landmarks from the CSV file
+        saved_landmarks = []
+        with open('dance/dance_landmarks.csv', newline='') as csvfile:
+            reader = csv.reader(csvfile, delimiter=',', quotechar='|')
+            for i, row in enumerate(reader):
+                if fromRow <= i <= toRow:
+                    saved_landmarks.append(row)
+
+        # Initialize the DTW matrix with infinity
+        dtw_matrix = [[float('inf')] * (len(saved_landmarks) + 1) for _ in range(len(self.last_three_poses) + 1)]
+
+        # Set the first cell to 0
+        dtw_matrix[0][0] = 0
+
+        # Calculate the DTW matrix
+        for i in range(1, len(self.last_three_poses) + 1):
+            for j in range(1, len(saved_landmarks) + 1):
+                cost = self.compare(self.last_three_poses[i-1], saved_landmarks[j-1])
+                dtw_matrix[i][j] = cost + min(dtw_matrix[i-1][j], dtw_matrix[i][j-1], dtw_matrix[i-1][j-1])
+
+        # The last cell in the DTW matrix is the total cost of aligning the sequences
+        return dtw_matrix[-1][-1]
+
     def cleanup(self):    
         # Close the CSV file
         self.file.close()
