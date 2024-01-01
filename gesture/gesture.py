@@ -20,6 +20,7 @@ class GestureRecognition:
         self.current_landmarks = None
         self.adjusted_pose_connections = None
         self.last_three_poses = []
+        self.main_poses = []
 
     def listToNormailizedLandmarkList(self, landmarks):
         # Create a new NormalizedLandmarkList and populate it with the filtered landmarks
@@ -47,11 +48,14 @@ class GestureRecognition:
         if results.pose_landmarks:
             self.raw_landmark_list, self.adjusted_pose_connections = self.exclude_landmarks_and_connections(results)
             self.current_landmarks, _, _, _, _ = self.center_and_scale(self.raw_landmark_list.landmark)
-
         # Update the last three poses
-        self.last_three_poses.append(self.current_landmarks.landmark)
-        if len(self.last_three_poses) > 3:
-            self.last_three_poses.pop(0)
+            self.last_three_poses.append(self.current_landmarks.landmark)
+            if len(self.last_three_poses) > 5:
+                self.last_three_poses.pop(0)
+
+    def save_interesting_landmarks(self):
+        # Update the last three poses
+        self.main_poses.append(self.current_landmarks.landmark)
 
     def draw_landmarks(self, rgb_image, frame):
         self.get_landmarks(rgb_image)
@@ -112,8 +116,11 @@ class GestureRecognition:
         if landmarks_1 is  None or landmarks_2 is None:
             return 10.0
             
+        n = len(landmarks_2) // 4
         for i, landmark in enumerate(landmarks_1):
-            squared_diff += (landmark.x - float(landmarks_2[i*4]))**2 + (landmark.y - float(landmarks_2[i*4+1]))**2 + (landmark.z - float(landmarks_2[i*4+2]))**2
+                if i >= n:
+                    break
+                squared_diff += (landmark.x - float(landmarks_2[i*4]))**2 + (landmark.y - float(landmarks_2[i*4+1]))**2 + (landmark.z - float(landmarks_2[i*4+2]))**2
 
         return squared_diff
 
@@ -140,7 +147,39 @@ class GestureRecognition:
 
         # The last cell in the DTW matrix is the total cost of aligning the sequences
         return dtw_matrix[-1][-1]
+    
+    def find_most_similar_pose_in_current_dance(self, threshold):
+        # Initialize the minimum squared difference and the index of the most similar pose
+        min_squared_diff = float('inf')
+        most_similar_pose_index = -1
 
+        # initialize this_dance as a copy of last_three_poses with index % 5 == 0 and omit the last pose
+        if self.main_poses == []:
+            return None
+        
+        other_poses = self.main_poses[:-1]
+
+        # Iterate over the saved landmarks
+        for i, other_pose in enumerate(other_poses):
+            other_pose = self.landmarks_to_list(other_pose)
+            # Calculate the squared difference between the current pose and the saved landmark
+            squared_diff = self.compare(self.current_landmarks.landmark, other_pose)
+            print(f'move {i+1} squared diff: {squared_diff}')
+            # If the squared difference is smaller than the current minimum, update the minimum and the index
+            if squared_diff < min_squared_diff:
+                min_squared_diff = squared_diff
+                most_similar_pose_index = i
+
+        # If the minimum squared difference is smaller than the threshold, return the index of the most similar pose
+        if min_squared_diff < threshold:
+            return most_similar_pose_index
+
+        # If no pose is similar enough to the current pose, return None
+        return None
+    
+    def landmarks_to_list(self, landmarks):
+        return [coord for landmark in landmarks for coord in (landmark.x, landmark.y, landmark.z, landmark.visibility)]
+    
     def cleanup(self):    
         # Close the CSV file
         self.file.close()

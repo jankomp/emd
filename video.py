@@ -61,7 +61,7 @@ def run(mode, moves=5, bpm=60, happy_face=False):
 
     music = Music()
     if mode == "dance":
-        music.generate(moves)
+        music.generate_starting_note()
 
     # Initialize the counter
     counter = -4
@@ -127,8 +127,15 @@ def run(mode, moves=5, bpm=60, happy_face=False):
                 if counter > 0 and counter <= moves:
                     screenshot = frame.copy()
                     screenshots.append(screenshot)
+                    gr.save_interesting_landmarks()
                     if mode == "dance":
                         border_color = (0, 255, 0)
+                        if counter > 1:
+                            print(f'similar moves for counter: {counter}')
+                            similar_move = gr.find_most_similar_pose_in_current_dance(threshold=3)
+                            print(f'similar move: {similar_move}')
+                            music.generate_next_note(similar_move)
+
                         music.play_melody_at_index(counter - 1)
                     elif mode == "copy":
                         #compare the current pose to the saved pose on row counter
@@ -198,20 +205,12 @@ def run(mode, moves=5, bpm=60, happy_face=False):
     out.release()
     cv2.destroyWindow(window_name)
     gr.cleanup()
-
-    # display a plot of the three scores
-    if mode == "copy":
-        plt.plot(all_sq_diff, label="Squared Difference")
-        plt.plot(all_dtw, label="Dynamic Time Warping")
-        if happy_face:
-            plt.plot(all_happiness, label="Happiness")
-        plt.legend()
-        plt.savefig(f'dance/{mode}_scores.png')
+    
 
 def stop():
     global video_running
     video_running = False
 
 if __name__ == "__main__":
-    #run("dance")
-    run("copy", 5, 120, True)
+    run("dance", 5, 120, True)
+    #run("copy", 5, 120, True)
