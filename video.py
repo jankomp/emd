@@ -155,8 +155,10 @@ def run(mode, moves=5, bpm=60, happy_face=False):
                             happiness_score = fr.estimate_happiness()
                             print(f"happiness score: {happiness_score}")
 
-                        # Call dynamicTimeWarping with poseCounter - 2 and poseCounter and a set of the last three poses
-                        dtw_score = gr.dynamicTimeWarping(pose_counter - 2, pose_counter)
+                        # Call dynamicTimeWarping with poseCounter - 4 and poseCounter and a set of the last five poses
+                        # divide the result by squared difference to ignore the scale of the difference
+                        sd = squared_diff if squared_diff > 1 else 1
+                        dtw_score = gr.dynamicTimeWarping(pose_counter - 4, pose_counter) / sd
                         print(f"DTW score of rows {pose_counter - 2} to {pose_counter}: {dtw_score}")
 
                         # Append the scores to the lists

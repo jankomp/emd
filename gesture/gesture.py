@@ -19,7 +19,7 @@ class GestureRecognition:
         self.raw_landmark_list = None
         self.current_landmarks = None
         self.adjusted_pose_connections = None
-        self.last_three_poses = []
+        self.last_five_poses = []
         self.main_poses = []
 
     def listToNormailizedLandmarkList(self, landmarks):
@@ -49,9 +49,9 @@ class GestureRecognition:
             self.raw_landmark_list, self.adjusted_pose_connections = self.exclude_landmarks_and_connections(results)
             self.current_landmarks, _, _, _, _ = self.center_and_scale(self.raw_landmark_list.landmark)
         # Update the last three poses
-            self.last_three_poses.append(self.current_landmarks.landmark)
-            if len(self.last_three_poses) > 5:
-                self.last_three_poses.pop(0)
+            self.last_five_poses.append(self.current_landmarks.landmark)
+            if len(self.last_five_poses) > 5:
+                self.last_five_poses.pop(0)
 
     def save_interesting_landmarks(self):
         # Update the last three poses
@@ -134,15 +134,15 @@ class GestureRecognition:
                     saved_landmarks.append(row)
 
         # Initialize the DTW matrix with infinity
-        dtw_matrix = [[float('inf')] * (len(saved_landmarks) + 1) for _ in range(len(self.last_three_poses) + 1)]
+        dtw_matrix = [[float('inf')] * (len(saved_landmarks) + 1) for _ in range(len(self.last_five_poses) + 1)]
 
         # Set the first cell to 0
         dtw_matrix[0][0] = 0
 
         # Calculate the DTW matrix
-        for i in range(1, len(self.last_three_poses) + 1):
+        for i in range(1, len(self.last_five_poses) + 1):
             for j in range(1, len(saved_landmarks) + 1):
-                cost = self.compare(self.last_three_poses[i-1], saved_landmarks[j-1])
+                cost = self.compare(self.last_five_poses[i-1], saved_landmarks[j-1])
                 dtw_matrix[i][j] = cost + min(dtw_matrix[i-1][j], dtw_matrix[i][j-1], dtw_matrix[i-1][j-1])
 
         # The last cell in the DTW matrix is the total cost of aligning the sequences
