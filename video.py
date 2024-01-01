@@ -205,7 +205,15 @@ def run(mode, moves=5, bpm=60, happy_face=False):
     out.release()
     cv2.destroyWindow(window_name)
     gr.cleanup()
-    
+   
+    # display a plot of the three scores
+    if mode == "copy":
+        plt.plot(all_sq_diff, label="Squared Difference")
+        plt.plot(all_dtw, label="Dynamic Time Warping")
+        if happy_face:
+            plt.plot(all_happiness, label="Happiness")
+        plt.legend()
+        plt.savefig(f'dance/{mode}_scores.png')
 
 def stop():
     global video_running

@@ -51,13 +51,13 @@ def voice_command():
     while True:
         command = str(recognize_command())
         if command == "dance" or command == "copy":
+            response_text = f"Starting to {command}!"
             video_thread = threading.Thread(target=run, kwargs={'mode': command, 'moves': moves, 'bpm': bpm, 'happy_face': happy_face})
             video_thread.daemon = True
             video_thread.start()
-            response_text = f"Starting to {command}!"
         elif command == "stop":
-            stop()
             response_text = "Stopping!"
+            stop()
         elif command.find("moves") != -1:
             try:
                 new_moves = w2n.word_to_num(command.split(" ")[0])
@@ -80,14 +80,14 @@ def voice_command():
                 print(f'bpm: {bpm}')
                 response_text = f"Setting bpm to {bpm}"
             except ValueError:
-                print("Invalid number of moves")
-                response_text = "Invalid number of moves"
+                print("Invalid number of bpm")
+                response_text = "Invalid number of bpm"
         elif command == "face on":
-            happy_face = True
             response_text = "Happy face detector on"
+            happy_face = True
         elif command == "face off":
-            happy_face = False
             response_text = "Happy face detector off"
+            happy_face = False
         else:
             response_text = "Invalid command"
             
