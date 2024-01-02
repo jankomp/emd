@@ -13,6 +13,16 @@ from music import Music
 video_running = True
 window_name = 'Little Dance Copiers'
 
+def score(dtw_score, squared_diff_score, happiness_score):
+    dtw_score = 100 - dtw_score * 10
+    print(f"dtw score: {dtw_score}")
+    squared_diff_score = (20 - squared_diff_score) * 100
+    print(f"squared diff score: {squared_diff_score}")
+    happiness_score = happiness_score if happiness_score > 0.75 else 0.75
+    print(f"happiness score: {happiness_score}")
+
+    return int(dtw_score + squared_diff_score * happiness_score)
+
 def resize_window(window_name, cap):    # Get the size of the screen
     user32 = ctypes.windll.user32
     screen_width, screen_height = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
@@ -68,6 +78,8 @@ def run(mode, moves=5, bpm=60, happy_face=False):
     pose_counter = counter * 5
     start_time = time.time()
     frame_time = start_time
+    current_score_time = start_time
+    total_score = 0
 
     # Define the codec and create a VideoWriter object
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # or use 'XVID'
@@ -119,6 +131,7 @@ def run(mode, moves=5, bpm=60, happy_face=False):
                 else:
                     counter += 1
                     frame_time = time.time()
+                    current_score_time = time.time()
                 
                 if counter <= 0:
                     countdown_sound.play()
@@ -131,16 +144,13 @@ def run(mode, moves=5, bpm=60, happy_face=False):
                     if mode == "dance":
                         border_color = (0, 255, 0)
                         if counter > 1:
-                            print(f'similar moves for counter: {counter}')
                             similar_move = gr.find_most_similar_pose_in_current_dance(threshold=3)
-                            print(f'similar move: {similar_move}')
                             music.generate_next_note(similar_move)
 
                         music.play_melody_at_index(counter - 1)
                     elif mode == "copy":
                         #compare the current pose to the saved pose on row counter
                         squared_diff = gr.copy(pose_counter)
-                        print(f"squared difference of row {pose_counter}: {squared_diff}")
                         
                         # if the squared difference is greater than 3, draw a red border and play a low sound
                         if squared_diff > 3:
@@ -151,15 +161,14 @@ def run(mode, moves=5, bpm=60, happy_face=False):
                             music.play_melody_at_index(counter - 1)
                 
                         # score happiness of face
+                        happiness_score = 0.75
                         if happy_face:
                             happiness_score = fr.estimate_happiness()
-                            print(f"happiness score: {happiness_score}")
 
                         # Call dynamicTimeWarping with poseCounter - 4 and poseCounter and a set of the last five poses
                         # divide the result by squared difference to ignore the scale of the difference
                         sd = squared_diff if squared_diff > 1 else 1
                         dtw_score = gr.dynamicTimeWarping(pose_counter - 4, pose_counter) / sd
-                        print(f"DTW score of rows {pose_counter - 2} to {pose_counter}: {dtw_score}")
 
                         # Append the scores to the lists
                         if happy_face:
@@ -167,6 +176,20 @@ def run(mode, moves=5, bpm=60, happy_face=False):
                         all_sq_diff.append(squared_diff)
                         all_dtw.append(dtw_score)
 
+                        # Calculate the score
+                        current_score = score(dtw_score, squared_diff, happiness_score)
+                        total_score += current_score
+
+            if mode == "copy" and counter > 0 and counter <= moves:
+                if time.time() - current_score_time <= delta_move / 2:
+                    # Display total score in blue
+                    cv2.putText(frame, f'Score: {total_score - current_score}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3, cv2.LINE_AA)
+                    (text_width, text_height), _ = cv2.getTextSize(f'Score: {total_score - current_score}', cv2.FONT_HERSHEY_SIMPLEX, 1, 3)
+                    # Display current score in orange for a fraction of a second
+                    cv2.putText(frame, f' + {current_score}', (10 + text_width, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 3, cv2.LINE_AA)
+                else:
+                    # Display total score in blue
+                    cv2.putText(frame, f'Score: {total_score}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3, cv2.LINE_AA)
 
             if counter < moves:
                 # Draw the counter in the bottom right corner
@@ -222,5 +245,5 @@ def stop():
     video_running = False
 
 if __name__ == "__main__":
-    run("dance", 5, 120, True)
-    #run("copy", 5, 120, True)
+    #run("dance", 5, 60, True)
+    run("copy", 5, 60, True)
