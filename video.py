@@ -14,14 +14,16 @@ video_running = True
 window_name = 'Little Dance Copiers'
 
 def score(dtw_score, squared_diff_score, happiness_score):
-    dtw_score = 100 - dtw_score * 10
-    print(f"dtw score: {dtw_score}")
+    dtw_score = (50 - dtw_score) * 10
+    print(f'dtw score: {dtw_score}')
+    dtw_score = dtw_score if dtw_score > 0 else 0
     squared_diff_score = (20 - squared_diff_score) * 100
-    print(f"squared diff score: {squared_diff_score}")
-    happiness_score = happiness_score if happiness_score > 0.75 else 0.75
-    print(f"happiness score: {happiness_score}")
+    print(f'squared diff score: {squared_diff_score}')
+    squared_diff_score = squared_diff_score if squared_diff_score > 0 else 0
+    happiness_score = happiness_score * 100
+    print(f'happiness score: {happiness_score}')
 
-    return int(dtw_score + squared_diff_score * happiness_score)
+    return int(dtw_score + squared_diff_score + happiness_score)
 
 def resize_window(window_name, cap):    # Get the size of the screen
     user32 = ctypes.windll.user32
@@ -126,59 +128,57 @@ def run(mode, moves=5, bpm=60, happy_face=False):
                     gr.dance()
 
                 # if it's not a 3rd iterarion we are done, otherwise we increment counter
-                if pose_counter % 5 != 0:
-                    continue
-                else:
+                if pose_counter % 5 == 0:
                     counter += 1
                     frame_time = time.time()
                     current_score_time = time.time()
                 
-                if counter <= 0:
-                    countdown_sound.play()
-                    border_color = (255, 0, 0)
+                    if counter <= 0:
+                        countdown_sound.play()
+                        border_color = (255, 0, 0)
 
-                if counter > 0 and counter <= moves:
-                    screenshot = frame.copy()
-                    screenshots.append(screenshot)
-                    gr.save_interesting_landmarks()
-                    if mode == "dance":
-                        border_color = (0, 255, 0)
-                        if counter > 1:
-                            similar_move = gr.find_most_similar_pose_in_current_dance(threshold=3)
-                            music.generate_next_note(similar_move)
-
-                        music.play_melody_at_index(counter - 1)
-                    elif mode == "copy":
-                        #compare the current pose to the saved pose on row counter
-                        squared_diff = gr.copy(pose_counter)
-                        
-                        # if the squared difference is greater than 3, draw a red border and play a low sound
-                        if squared_diff > 3:
-                            border_color = (0, 0, 255)
-                            error_sound.play()
-                        else:
+                    if counter > 0 and counter <= moves:
+                        screenshot = frame.copy()
+                        screenshots.append(screenshot)
+                        gr.save_interesting_landmarks()
+                        if mode == "dance":
                             border_color = (0, 255, 0)
+                            if counter > 1:
+                                similar_move = gr.find_most_similar_pose_in_current_dance(threshold=3)
+                                music.generate_next_note(similar_move)
+
                             music.play_melody_at_index(counter - 1)
-                
-                        # score happiness of face
-                        happiness_score = 0.75
-                        if happy_face:
-                            happiness_score = fr.estimate_happiness()
+                        elif mode == "copy":
+                            #compare the current pose to the saved pose on row counter
+                            squared_diff = gr.copy(pose_counter)
+                            
+                            # if the squared difference is greater than 3, draw a red border and play a low sound
+                            if squared_diff > 3:
+                                border_color = (0, 0, 255)
+                                error_sound.play()
+                            else:
+                                border_color = (0, 255, 0)
+                                music.play_melody_at_index(counter - 1)
+                    
+                            # score happiness of face
+                            happiness_score = 0.75
+                            if happy_face:
+                                happiness_score = fr.estimate_happiness()
 
-                        # Call dynamicTimeWarping with poseCounter - 4 and poseCounter and a set of the last five poses
-                        # divide the result by squared difference to ignore the scale of the difference
-                        sd = squared_diff if squared_diff > 1 else 1
-                        dtw_score = gr.dynamicTimeWarping(pose_counter - 4, pose_counter) / sd
+                            # Call dynamicTimeWarping with poseCounter - 4 and poseCounter and a set of the last five poses
+                            # divide the result by squared difference to ignore the scale of the difference
+                            sd = squared_diff if squared_diff > 1 else 1
+                            dtw_score = gr.dynamicTimeWarping(pose_counter - 4, pose_counter) / sd
 
-                        # Append the scores to the lists
-                        if happy_face:
-                            all_happiness.append(happiness_score)
-                        all_sq_diff.append(squared_diff)
-                        all_dtw.append(dtw_score)
+                            # Append the scores to the lists
+                            if happy_face:
+                                all_happiness.append(happiness_score)
+                            all_sq_diff.append(squared_diff)
+                            all_dtw.append(dtw_score)
 
-                        # Calculate the score
-                        current_score = score(dtw_score, squared_diff, happiness_score)
-                        total_score += current_score
+                            # Calculate the score
+                            current_score = score(dtw_score, squared_diff, happiness_score)
+                            total_score += current_score
 
             if mode == "copy" and counter > 0 and counter <= moves:
                 if time.time() - current_score_time <= delta_move / 2:
