@@ -65,13 +65,8 @@ class FacialRecognition:
         # Calculate the interocular distance
         interocular_distance = ((eye_right.x - eye_left.x) ** 2 + (eye_right.y - eye_left.y) ** 2) ** 0.5
 
-        # Normalize the distances by the interocular distance
-        mouth_width /= interocular_distance
-        mouth_height /= interocular_distance
-        cheek_distance /= interocular_distance
-
         # The "happiness score" is a combination of the normalized mouth's width, its height, and the cheek distance
-        happiness_score = mouth_width + mouth_height + cheek_distance
+        happiness_score = (mouth_width + mouth_height + cheek_distance) / interocular_distance
 
         return happiness_score
 
