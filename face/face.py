@@ -179,7 +179,10 @@ def main():
     ret, frame = cap.read()
 
     # Draw the facial landmarks on the frame
-    frame = facial_recognition.draw_face_landmarks(frame)
+    frame = facial_recognition.draw_face_landmarks_indices(frame)
+
+    # save frame to file with opencv
+    cv2.imwrite('docs/face_landmark_indices.jpg', frame)
 
     # Display the image
     cv2.imshow('Image', frame)
