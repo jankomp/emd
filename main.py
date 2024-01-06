@@ -117,8 +117,8 @@ label.pack(padx=10, pady=10)
 
 # Uncomment on release
 # Initialize the speech engine
-#engine = pyttsx3.init()
-#text_to_speech(engine, label_txt)
+engine = pyttsx3.init()
+text_to_speech(engine, description_label)
 
 # Create a response label
 response_label = tk.Label(window, text=response_text, font=("Arial", 20))

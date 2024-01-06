@@ -85,7 +85,9 @@ def run(mode, moves=5, bpm=60, happy_face=False):
 
     # Define the codec and create a VideoWriter object
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # or use 'XVID'
-    out = cv2.VideoWriter(f'dance/{mode}_output.mp4', fourcc, 20.0, (640, 480))
+    #get current date and time
+    video_datetime = str(time.time())
+    out = cv2.VideoWriter(f'dance/{video_datetime}_{mode}_output.mp4', fourcc, 20.0, (640, 480))
     
     ret, frame = cap.read()
     screenshots = []
@@ -233,12 +235,15 @@ def run(mode, moves=5, bpm=60, happy_face=False):
    
     # display a plot of the three scores
     if mode == "copy":
-        plt.plot(all_sq_diff, label="Squared Difference")
-        plt.plot(all_dtw, label="Dynamic Time Warping")
+        fig, axs = plt.subplots(3, 1, figsize=(10, 15))
+        axs[0].bar(range(len(all_sq_diff)), all_sq_diff, label="Squared Difference")
+        axs[0].legend()
+        axs[1].bar(range(len(all_dtw)), all_dtw, label="Dynamic Time Warping")
+        axs[1].legend()
         if happy_face:
-            plt.plot(all_happiness, label="Happiness")
-        plt.legend()
-        plt.savefig(f'dance/{mode}_scores.png')
+            axs[2].bar(range(len(all_happiness)), all_happiness, label="Happiness")
+            axs[2].legend()
+        plt.savefig(f'dance/{video_datetime}_{mode}_scores.png')
 
 def stop():
     global video_running

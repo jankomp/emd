@@ -1,5 +1,6 @@
 import cv2
 import mediapipe as mp
+import numpy as np
 
 class FacialRecognition:
     def __init__(self):
@@ -33,6 +34,51 @@ class FacialRecognition:
 
         return frame
     
+    def draw_face_landmarks_indices(self, frame):
+        # Convert the BGR image to RGB
+        rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        # Process the image to detect faces and facial landmarks
+        results = self.face_mesh.process(rgb_image)
+
+        # Draw the facial landmarks on the frame
+        if results.multi_face_landmarks:
+            # Create a blank black frame
+            blank_frame = np.zeros_like(frame)
+
+            for face_landmarks in results.multi_face_landmarks:
+                # Define the list of special indices
+                special_indices = [61, 291, 78, 95, 93, 234, 33, 263, 454, 323]
+
+                # First draw the regular indices
+                for i, landmark in enumerate(face_landmarks.landmark):
+                    if i not in special_indices:
+                        # Convert the landmark point
+                        landmark_point = [int(landmark.x * frame.shape[1]), int(landmark.y * frame.shape[0])]
+
+                        # Draw the landmark on the blank frame
+                        cv2.circle(blank_frame, tuple(landmark_point), 1, (0, 255, 0), -1)
+
+                        # Write the index of the landmark next to the point on the blank frame
+                        cv2.putText(blank_frame, str(i), tuple(landmark_point), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 255), 1)
+
+                # Then draw the special indices
+                for i in special_indices:
+                    landmark = face_landmarks.landmark[i]
+                    # Convert the landmark point
+                    landmark_point = [int(landmark.x * frame.shape[1]), int(landmark.y * frame.shape[0])]
+
+                    # Draw the landmark on the blank frame
+                    cv2.circle(blank_frame, tuple(landmark_point), 1, (0, 0, 255), -1)
+
+                    # Write the index of the landmark next to the point on the blank frame
+                    cv2.putText(blank_frame, str(i), tuple(landmark_point), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 2)
+
+                self.face_landmarks = face_landmarks
+
+            # Return the blank frame with the landmarks drawn on it
+            return blank_frame
+    
     def estimate_happiness(self):
         if self.face_landmarks is None:
             return 0.75
@@ -51,12 +97,16 @@ class FacialRecognition:
         # Calculate the distance between the upper and lower lips
         mouth_height = ((upper_lip.x - lower_lip.x) ** 2 + (upper_lip.y - lower_lip.y) ** 2) ** 0.5
 
-        # Get the landmarks for the cheeks (AU6 ~ cheek raiser)
-        cheek_left = self.face_landmarks.landmark[93]
-        cheek_right = self.face_landmarks.landmark[234]
+        # Get the landmarks for the right cheeks (AU6 ~ cheek raiser)
+        right_cheek_low = self.face_landmarks.landmark[93]
+        right_cheek_high = self.face_landmarks.landmark[234]
 
-        # Calculate the distance between the cheeks
-        cheek_distance = ((cheek_right.x - cheek_left.x) ** 2 + (cheek_right.y - cheek_left.y) ** 2) ** 0.5
+        # Get the landmarks for the left cheeks (AU6 ~ cheek raiser)
+        left_cheek_low = self.face_landmarks.landmark[454]
+        left_cheek_high = self.face_landmarks.landmark[323]
+
+        # Calculate the distance between the cheek points
+        cheek_distance = (((right_cheek_high.x - right_cheek_low.x) ** 2 + (right_cheek_high.y - right_cheek_low.y) ** 2) ** 0.5 + ((left_cheek_high.x - left_cheek_low.x) ** 2 + (left_cheek_high.y - left_cheek_low.y) ** 2) ** 0.5) / 2
 
         # Get the landmarks for the eyes
         eye_left = self.face_landmarks.landmark[33]
@@ -118,3 +168,28 @@ class FacialRecognition:
 #  rightCheek: [205],
 #  leftCheek: [425]
 #};
+def main():
+    # Open the webcam
+    cap = cv2.VideoCapture(0)
+
+    # Create an instance of the FacialRecognition class
+    facial_recognition = FacialRecognition()
+
+    # Capture a single frame from the webcam
+    ret, frame = cap.read()
+
+    # Draw the facial landmarks on the frame
+    frame = facial_recognition.draw_face_landmarks(frame)
+
+    # Display the image
+    cv2.imshow('Image', frame)
+
+    # Wait for a key press and then close the image window
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    # Release the webcam
+    cap.release()
+
+if __name__ == "__main__":
+    main()
